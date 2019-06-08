@@ -1,98 +1,83 @@
 # CarND-Controls-PID
 Self-Driving Car Engineer Nanodegree Program
 
----
+# Reflection 
 
-## Dependencies
+## Describe the effect of the P, I and D component of the PID algorithm!
 
-* cmake >= 3.5
- * All OSes: [click here for installation instructions](https://cmake.org/install/)
-* make >= 4.1(mac, linux), 3.81(Windows)
-  * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
-* gcc/g++ >= 5.4
-  * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
-* [uWebSockets](https://github.com/uWebSockets/uWebSockets)
-  * Run either `./install-mac.sh` or `./install-ubuntu.sh`.
-  * If you install from source, checkout to commit `e94b6e1`, i.e.
-    ```
-    git clone https://github.com/uWebSockets/uWebSockets 
-    cd uWebSockets
-    git checkout e94b6e1
-    ```
-    Some function signatures have changed in v0.14.x. See [this PR](https://github.com/udacity/CarND-MPC-Project/pull/3) for more details.
-* Simulator. You can download these from the [project intro page](https://github.com/udacity/self-driving-car-sim/releases) in the classroom.
+The steering angle is determined based on the cross track error (CTE), i.e. the distance between the egovehicle position and the ideal path.
+More exactly, the steering angle is determined as a sum of three terms:
 
-Fellow students have put together a guide to Windows set-up for the project [here](https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/files/Kidnapped_Vehicle_Windows_Setup.pdf) if the environment you have set up for the Sensor Fusion projects does not work for this project. There's also an experimental patch for windows in this [PR](https://github.com/udacity/CarND-PID-Control-Project/pull/3).
+- one term which is proportional to the CTE (P)
+- one term which is based on the time derivative of the CTE (D)
+- one term which is based on the time integral of the CTE (I)
 
-## Basic Build Instructions
+### P-component
 
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./pid`. 
+This component can be considered as the main component. Basically, the farther away the car is from the ideal path, the more the greater the steering angle.
 
-Tips for setting up your environment can be found [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
+However, while a controller using only this term keeps the car on the track, the car always "overshoots" the ideal path, see short video below.
 
-## Editor Settings
+![Video with Kp=0.07, Kd=Ki=0](videos/KP_only.gif)
 
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
+The reason is as follows: When the car reaches the ideal path, the steering angle will be zero. However, due to the previous steering angle, the car's yaw will not be parallel to the ideal path. Thus, it always overshoots.
 
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
+### D-component
 
-## Code Style
+The problem of overshooting can be compensated with the D-term (see video below).
 
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
+![Video with Kp=0.07, Kd=2.0, Ki=0](videos/KP_plus_KD.gif)
 
-## Project Instructions and Rubric
+The idea of the D-compoment can be explained as follows:
+If we are getting closer to the ideal path, we already have to reduce the steering angle magnitude (and even countersteer) to align the car's yaw with the ideal path. Since the CTE is decreasing, its time derivative is negative.
+In contrast, if we are getting farer way from the ideal path, we would like to steer "harder" to get back on track. In this case the CTE is increasing, meaning its time derivative is positive.
+Thus, taking into account the time derivative of the CTE helps to steer better.
 
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
+### I-component
 
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
+As the lecture notes discussed, the I-component helps to correct any offset in the system such as erroneous actors.
 
-## Hints!
+However, a too high value may cause instability.
 
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
+## Describe how the final hyperparameters were chosen!
 
-## Call for IDE Profiles Pull Requests
+### Manual tuning using systematic method
 
-Help your fellow students!
+At first, the parameters were chosen manually by following the method described in https://en.wikipedia.org/wiki/PID_controller#Manual_tuning
 
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
+1. Set Kp=Ki=Kd=0
+2. Increase Kp until the output oscillates
+3. Increase Kd to reduce magnitude of oscillations
+4. Finally, increase Ki to correct any potential offset (found not to be necessary?!)
 
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
+By following this approach these values were picked: 
+ - Kp = 0.07
+ - Kd = 2.0
+ - Ki= 0.0001 (very minimal, to allow optimization)
 
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
+### Further automatic tuning using twiddle algorithm
 
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
+These values were further optimized using the twiddle algorithm.
+The twiddle algorithms works similar to gradient descent by slightly varying one parameter and going in the direction with the lowest cost (in this case cost= sum of sqared CTE).
 
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
+Ideally, it would work by driving the exact same track with different parameter sets and comparing the results.
+However, with the provided simulator it is not possible to drive the "exact same track".
+Therefore, we would need to be able to reset the simulator or at least know where in the track we are. Neither of those technical option seem to exist...
 
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
+Therefore, I tried something else: Instead of driving the whole track, the current parameters were always evaluated after 100 "ticks". Here, 1 tick = one json message sent to the simulator.
+The big disadvantage with that approach is that in these 100 ticks, the car will sometimes drive rather easy straight roads and sometimes sharp curves, which were much more likely to result in large CTEs.
+Thus, the cost was not so much influenced by the parameters, but instead much more by the track, which the car drove in these 100 ticks.
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+The result is that my optimization never reaches a final value.
+Despite that, one parameter set during the optimization, which yielded qualtiatively good results, was the following:
+Kp=0.126795, Kd=2.20375, Ki=0.000190852
 
+Some details concerning the implementation of the twiddle algorithm:
+- Instead of evaluating the new param set after each run, I first waited until all potential steps (="experiments") were completed and then picked the one yielding the lowest costs.
+- I also always reevaluated the original parameter set in each run, since it just might have been a "lucky" part of the track as a straight line
+
+# Future work in this repo
+- For twiddle: Longer evaluation time for each experiment (ideally exactly one track)
+- It is likely, that the optimal solution will also overshoot as described in the lecture notes. I believe that an additional regularization term such as the weighted sum of the Kp, Kd, Ki parameters would prevent that
+- Currently, the twiddle class uses vectors to store the parameters. Maybe an array would be better here?
+- Currently, the twiddle algorithm always performs three experiments: (-1,0,+1)*step . We could potentially dismiss the last one, if the first one already shows better results
