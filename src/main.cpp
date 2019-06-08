@@ -34,8 +34,8 @@ string hasData(string s) {
 
 int main() {
     // init PID
-    double Kp = 0.0;//0.05;
-    double Kd = 0.0;//1.5;
+    double Kp = 0.7;//0.05;
+    double Kd = 2.0;//1.5;
     double Ki= 0.0001;//0.0001;
     PID pid(Kp, Kd, Ki);
 
