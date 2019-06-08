@@ -40,7 +40,7 @@ int main() {
     PID pid(Kp, Kd, Ki);
 
     // init Twiddle optimizer
-    int num_steps = INT_MAX;
+    int num_steps = 100;
     std::vector<double> params_init = {Kp, Kd, Ki};
     Twiddle twiddle(num_steps, params_init);
 
