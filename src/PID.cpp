@@ -7,9 +7,9 @@
  */
 
 PID::PID(double Kp_, double Kd_, double Ki_)
-    : Kp(Kp_), Ki(Ki_), Kd(Kd_),
-      cte_int(0), cte_last(0),
-      error(0)
+    : error(0),
+      Kp(Kp_), Ki(Ki_), Kd(Kd_),
+      cte_last(0), cte_int(0)
 {
 }
 
@@ -22,7 +22,7 @@ double PID::get_steering_angle(double cte) {
     double cte_diff = (cte - cte_last) / dt;
     cte_last = cte;
     cte_int += cte;
-    error += std::pow(cte,2);
+    error += cte*cte;
 
     // calculate steering angle
     double steer_angle = -Kp * cte - Kd * cte_diff - Ki * cte_int;
